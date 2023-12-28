@@ -6,10 +6,10 @@ from convert import to_mp3
 def main():
     client = MongoClient("host.minikube.internal", 27017)
     db_videos = client.videos
-    dp_mp3s = client.mp3s
+    db_mp3s = client.mp3s
     #gridfs
-    fs_videos = gridfs.Gridfs(db_videos)
-    fs_mp3s = gridfs.Gridfs(db_mp3s)
+    fs_videos = gridfs.GridFS(db_videos)
+    fs_mp3s = gridfs.GridFS(db_mp3s)
 
     # rabbitmq connection
     connection = pika.BlockingConnection(
@@ -29,3 +29,15 @@ def main():
     )
 
     print("Waiting for meassages. To exit press CNTRL+C")
+
+    channel.start_consuming()
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Interrupted")
+        try:
+            sys.exit(0)
+        except SystemExit:
+            os._exit(0)
