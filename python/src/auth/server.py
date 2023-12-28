@@ -1,18 +1,19 @@
 import jwt
-import datetime
+import datetime, logging
 import os
 from flask import Flask, request
 from flask_mysqldb import MySQL
 
 server = Flask(__name__)
 mysql = MySQL(server)
+logging.basicConfig(level=logging.DEBUG)
 
 # config
 server.config["MYSQL_HOST"] = os.environ.get("MYSQL_HOST")
 server.config["MYSQL_USER"] = os.environ.get("MYSQL_USER")
 server.config["MYSQL_PASSWORD"] = os.environ.get("MYSQL_PASSWORD")
 server.config["MYSQL_DB"] = os.environ.get("MYSQL_DB")
-server.config["MYSQL_PORT"] = os.environ.get("MYSQL_PORT")
+server.config["MYSQL_PORT"] = int(os.environ.get("MYSQL_PORT"))
 
 
 @server.route("/login", methods=["POST"])
@@ -24,7 +25,7 @@ def login():
     # check db for username and password
     cur = mysql.connection.cursor()
     res = cur.execute(
-        "SELECT email, password FROM usser WHERE email=%s", (auth.username)
+        "SELECT email, password FROM user WHERE email=%s", (auth.username,)
     )
 
     if res > 0:
@@ -44,8 +45,8 @@ def createJWT(username, secret, authz):
     return jwt.encode(
         {
             "username": username,
-            "exp": datetime.dateime.now(tz=datetime.datetime.utc) + datetime.timedelta(days=1),
-            "iat": datetime.datetime.utcnow(),
+            "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=1),
+            "iat": datetime.datetime.now(tz=datetime.timezone.utc),
             "admin": authz,
         },
         secret,
@@ -55,20 +56,23 @@ def createJWT(username, secret, authz):
 
 @server.route("/validate", methods=["POST"])
 def validate():
-    encoded_jwt = request.headers["Authorization"]
+    logging.debug(request.headers)
+    encoded_jwt = request.headers.get('Authorization')
 
     if not encoded_jwt:
         return "missing credentials", 401
 
     encoded_jwt = encoded_jwt.split(" ")[1]
-
+    logging.debug(encoded_jwt)
     try:
         decoded = jwt.decode(
             encoded_jwt,
             os.environ.get("JWT_SECRET"),
-            algorithm=["HS256"]
+            algorithms=["HS256"]
         )
-    except:
+    except Exception as err:
+        logging.debug(err)
+        print(err)
         return "not authorized", 403
 
     return decoded, 200

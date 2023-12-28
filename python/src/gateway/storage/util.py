@@ -1,4 +1,6 @@
-import pika, json
+import pika, json, logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 def upload(f, fs, channel, access):
     try:
@@ -17,10 +19,11 @@ def upload(f, fs, channel, access):
             exchange = "",
             routing_key="video",
             body=json.dumps(message),
-            properies=pika.BasicProperties(
+            properties=pika.BasicProperties(
                 delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
             ),
         )
-    except:
+    except Exception as err:
+        logging.debug(err)
         fs.delete(fid)
         return "internal server error: unable to publish message to queue.", 500

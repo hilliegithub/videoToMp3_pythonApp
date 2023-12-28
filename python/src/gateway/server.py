@@ -1,4 +1,4 @@
-import os, gridfs, pika, json
+import os, gridfs, pika, json, logging
 from flask import Flask, request
 from flask_pymongo import PyMongo
 from auth import validate
@@ -16,14 +16,21 @@ connection = pika.BlockingConnection(pika.ConnectionParameters("rabbitmq"))
 
 channel = connection.channel()
 
+logging.basicConfig(level=logging.DEBUG)
+
+
 @server.route("/login", methods=["POST"])
 def login():
-    token, err = access.login(request)
-
-    if not err:
-        return token
-    else:
-        return err
+    try:
+        token, err = access.login(request)
+        logging.debug("After access.login call")
+        if not err:
+            return token
+        else:
+            return err
+    except Exception as e:
+        logging.error(f"An error occured: {str(e)}")
+        return "Internal Server Error", 500
 
 @server.route("/upload", methods=["POST"])
 def upload():
@@ -32,7 +39,7 @@ def upload():
     access = json.loads(access)
 
     if access["admin"]:
-        if len(request.files) > 1 or len(request) < 1:
+        if len(request.files) > 1 or len(request.files) < 1:
             return "exactly 1 file required", 400
 
         for _, f in request.files.items():
